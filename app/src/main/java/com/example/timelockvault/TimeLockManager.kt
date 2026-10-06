@@ -9,12 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.max
 
-private const val PREFS_NAME = "time_lock_vault_secure"
-private const val KEY_PASSWORD = "vault_password"
-private const val KEY_LOCKED = "vault_locked"
-private const val KEY_LOCK_UNTIL_ELAPSED = "vault_lock_until_elapsed"
-private const val KEY_BOOT_TOKEN = "vault_boot_token"
-
 data class VaultUiState(
     val password: String = "",
     val isLocked: Boolean = false,
@@ -48,6 +42,12 @@ class TimeLockManager private constructor(
         @Volatile
         private var INSTANCE: TimeLockManager? = null
 
+        private const val PREFS_NAME = "time_lock_vault_secure"
+        private const val KEY_PASSWORD = "vault_password"
+        private const val KEY_LOCKED = "vault_locked"
+        private const val KEY_LOCK_UNTIL_ELAPSED = "vault_lock_until_elapsed"
+        private const val KEY_BOOT_TOKEN = "vault_boot_token"
+
         fun getInstance(context: Context): TimeLockManager {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: TimeLockManager(context.applicationContext).also { INSTANCE = it }
@@ -55,11 +55,15 @@ class TimeLockManager private constructor(
         }
     }
 
-    fun getPassword(): String = prefs.getString(KEY_PASSWORD, "") ?: ""
+    fun getPassword(): String {
+        return prefs.getString(KEY_PASSWORD, "") ?: ""
+    }
 
     fun savePassword(password: String) {
-        prefs.edit().putString(KEY_PASSWORD, password).apply()
-        refreshState()
+        if (password.isNotBlank()) {
+            prefs.edit().putString(KEY_PASSWORD, password).apply()
+            refreshState()
+        }
     }
 
     fun clearVault() {
@@ -92,13 +96,14 @@ class TimeLockManager private constructor(
             return false
         }
 
-        val lockUntil = prefs.getLong(KEY_LOCK_UNTIL_ELAPSED, 0L)
-        if (lockUntil <= 0L) {
+        val lockUntilElapsed = prefs.getLong(KEY_LOCK_UNTIL_ELAPSED, 0L)
+        if (lockUntilElapsed <= 0L) {
             unlockVault()
             return false
         }
 
-        if (SystemClock.elapsedRealtime() >= lockUntil) {
+        val now = SystemClock.elapsedRealtime()
+        if (now >= lockUntilElapsed) {
             unlockVault()
             return false
         }
@@ -107,12 +112,12 @@ class TimeLockManager private constructor(
     }
 
     fun getRemainingTimeMs(): Long {
-        val locked = prefs.getBoolean(KEY_LOCKED, false)
-        if (!locked) return 0L
+        if (!prefs.getBoolean(KEY_LOCKED, false)) return 0L
 
-        val unlockAt = prefs.getLong(KEY_LOCK_UNTIL_ELAPSED, 0L)
-        if (unlockAt <= 0L) return 0L
-        return max(0L, unlockAt - SystemClock.elapsedRealtime())
+        val lockUntilElapsed = prefs.getLong(KEY_LOCK_UNTIL_ELAPSED, 0L)
+        if (lockUntilElapsed <= 0L) return 0L
+
+        return max(0L, lockUntilElapsed - SystemClock.elapsedRealtime())
     }
 
     fun lockFor(durationMs: Long) {
@@ -167,6 +172,7 @@ class TimeLockManager private constructor(
     fun refreshState() {
         val password = getPassword()
         val locked = isVaultLocked()
+
         _state.value = VaultUiState(
             password = password,
             isLocked = locked,
@@ -178,10 +184,12 @@ class TimeLockManager private constructor(
     private fun getBootToken(): Long {
         val bootPrefs = context.getSharedPreferences("boot_guard", Context.MODE_PRIVATE)
         var token = bootPrefs.getLong("boot_token", 0L)
+
         if (token == 0L) {
             token = System.currentTimeMillis()
             bootPrefs.edit().putLong("boot_token", token).apply()
         }
+
         return token
     }
 }
