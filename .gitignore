@@ -1,0 +1,21 @@
+# Gradle files
+.gradle/
+build/
+*.apk
+*.aar
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Local environment
+local.properties
+
+# Proguard
+proguard-rules.pro
+
+# Misc
+*.log

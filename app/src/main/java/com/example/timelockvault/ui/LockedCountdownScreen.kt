@@ -46,8 +46,8 @@ fun LockedCountdownScreen(
     val uiState by timeLockManager.state.collectAsState()
 
     LaunchedEffect(uiState.isLocked, uiState.remainingMs) {
-        if (uiState.isLocked && uiState.remainingMs > 0L) {
-            delay(1000L)
+        while (uiState.isLocked && uiState.remainingMs > 0L) {
+            delay(500L)
             timeLockManager.refreshState()
         }
     }
@@ -81,7 +81,7 @@ fun LockedCountdownScreen(
                     modifier = Modifier.size(220.dp)
                 ) {
                     drawArc(
-                        color = Color(0xFF7E9CFF),
+                        color = Color(0xFF7D9BFF),
                         startAngle = -90f,
                         sweepAngle = 360f,
                         useCenter = false,
@@ -149,10 +149,13 @@ private fun formatCountdown(remainingMs: Long): String {
     var remaining = remainingMs
     val days = TimeUnit.MILLISECONDS.toDays(remaining)
     remaining -= TimeUnit.DAYS.toMillis(days)
+
     val hours = TimeUnit.MILLISECONDS.toHours(remaining)
     remaining -= TimeUnit.HOURS.toMillis(hours)
+
     val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining)
     remaining -= TimeUnit.MINUTES.toMillis(minutes)
+
     val seconds = TimeUnit.MILLISECONDS.toSeconds(remaining)
 
     return String.format("%02dd : %02dh : %02dm : %02ds", days, hours, minutes, seconds)

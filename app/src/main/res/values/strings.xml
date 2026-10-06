@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TimeLock Vault</string>
+    <string name="timelock_vault">TIMELOCK VAULT</string>
+    <string name="generate_password">Generate Password</string>
+    <string name="generated_password">GENERATED PASSWORD</string>
+    <string name="create_password">CREATE PASSWORD</string>
+    <string name="save_and_lock">SAVE AND LOCK</string>
+    <string name="set_lock_hide">SET LOCK &amp; HIDE</string>
+    <string name="length">Length</string>
+    <string name="characters">characters</string>
+    <string name="uppercase">Uppercase (A-Z)</string>
+    <string name="lowercase">Lowercase (a-z)</string>
+    <string name="numbers">Numbers (0-9)</string>
+    <string name="symbols">Symbols (!@#$)</string>
+    <string name="refresh">Refresh</string>
+    <string name="set_lock_duration">Set lock duration</string>
+    <string name="minutes">Minutes</string>
+    <string name="hours">Hours</string>
+    <string name="days">Days</string>
+    <string name="warning_message">Once activated, the app will self-lock. You will NOT be able to access this password until the timer expires.</string>
+    <string name="confirm_lock">Confirm &amp; Lock App</string>
+    <string name="app_locked">APP LOCKED</string>
+    <string name="vault_locked_message">Vault is locked. Access denied until countdown completes.</string>
+    <string name="ok">OK</string>
+    <string name="password_placeholder">Password or paste your own</string>
+    <string name="copy_password">Copy password</string>
+</resources>
