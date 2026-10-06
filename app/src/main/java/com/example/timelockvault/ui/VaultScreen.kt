@@ -27,7 +27,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -53,30 +52,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.timelockvault.BuildConfig
-import com.example.timelockvault.TimeLockManager
+import com.example.timelockvault.domain.usecase.GeneratePasswordConfig
+import com.example.timelockvault.presentation.viewmodel.VaultUiState
+import com.example.timelockvault.presentation.viewmodel.VaultViewModel
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VaultScreen(
-    timeLockManager: TimeLockManager,
+    uiState: VaultUiState,
+    viewModel: VaultViewModel,
     onLockApp: (Long) -> Unit
 ) {
-    var password by remember {
-        mutableStateOf(
-            timeLockManager.getPassword().ifBlank {
-                timeLockManager.generatePassword(
-                    length = 16,
-                    includeUppercase = true,
-                    includeLowercase = true,
-                    includeNumbers = true,
-                    includeSymbols = true
-                )
-            }
-        )
-    }
-
-    var manualPassword by rememberSaveable { mutableStateOf(password) }
+    var password by rememberSaveable { mutableStateOf(uiState.password) }
     var length by rememberSaveable { mutableIntStateOf(16) }
     var includeUppercase by rememberSaveable { mutableStateOf(true) }
     var includeLowercase by rememberSaveable { mutableStateOf(true) }
@@ -104,7 +92,6 @@ fun VaultScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-
             Text(
                 text = "TIMELOCK VAULT",
                 color = Color(0xFF191F29),
@@ -112,16 +99,13 @@ fun VaultScreen(
                 letterSpacing = 2.5.sp,
                 fontWeight = FontWeight.ExtraBold
             )
-
             Spacer(modifier = Modifier.height(16.dp))
-
             Text(
                 text = "Generate Password",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF0D1117)
             )
-
             Spacer(modifier = Modifier.height(20.dp))
 
             Box(
@@ -154,62 +138,48 @@ fun VaultScreen(
                             maxLines = 1
                         )
                     }
-
                     Spacer(modifier = Modifier.width(12.dp))
-
                     IconButton(
-                        onClick = {
-                            clipboard.setText(AnnotatedString(password))
-                        },
+                        onClick = { clipboard.setText(AnnotatedString(password)) },
                         modifier = Modifier
                             .shadow(4.dp, RoundedCornerShape(12.dp))
                             .background(Color(0xFF2C313D), RoundedCornerShape(12.dp))
                             .size(44.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Copy password",
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Copy",
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
-
             Spacer(modifier = Modifier.height(16.dp))
-
             OutlinedTextField(
-                value = manualPassword,
+                value = password,
                 onValueChange = {
-                    manualPassword = it
-                    if (it.isNotEmpty()) {
-                        password = it
-                        timeLockManager.savePassword(it)
-                    }
+                    password = it
+                    if (it.isNotEmpty()) viewModel.savePassword(it)
                 },
                 label = { Text("Enter or paste password", fontSize = 13.sp) },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(14.dp),
-                textStyle = androidx.compose.material3.LocalTextStyle.current.copy(fontSize = 14.sp)
+                shape = RoundedCornerShape(14.dp)
             )
-
             Spacer(modifier = Modifier.height(14.dp))
 
             Button(
                 onClick = {
-                    val generated = timeLockManager.generatePassword(
-                        length = length,
-                        includeUppercase = includeUppercase,
-                        includeLowercase = includeLowercase,
-                        includeNumbers = includeNumbers,
-                        includeSymbols = includeSymbols
+                    val generated = viewModel.generatePassword(
+                        GeneratePasswordConfig(
+                            length, includeUppercase, includeLowercase, includeNumbers, includeSymbols
+                        )
                     )
                     password = generated
-                    manualPassword = generated
-                    timeLockManager.savePassword(generated)
+                    viewModel.savePassword(generated)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -221,21 +191,16 @@ fun VaultScreen(
                 shape = RoundedCornerShape(14.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
-                Icon(
-                    Icons.Default.VpnKey,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("CREATE PASSWORD", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
-
             Spacer(modifier = Modifier.height(10.dp))
 
             Button(
                 onClick = {
                     if (password.isNotBlank()) {
-                        timeLockManager.savePassword(password)
+                        viewModel.savePassword(password)
                         showLockDialog = true
                     }
                 },
@@ -249,15 +214,10 @@ fun VaultScreen(
                 shape = RoundedCornerShape(14.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
-                Icon(
-                    Icons.Default.Lock,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("SAVE AND LOCK", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
-
             Spacer(modifier = Modifier.height(16.dp))
 
             Column(
@@ -285,9 +245,7 @@ fun VaultScreen(
                         fontWeight = FontWeight.Medium
                     )
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
                 Slider(
                     value = length.toFloat(),
                     onValueChange = { length = it.toInt() },
@@ -295,9 +253,7 @@ fun VaultScreen(
                     steps = 23,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Spacer(modifier = Modifier.height(12.dp))
-
                 SettingRow("Uppercase (A-Z)", includeUppercase) { includeUppercase = it }
                 Spacer(modifier = Modifier.height(6.dp))
                 SettingRow("Lowercase (a-z)", includeLowercase) { includeLowercase = it }
@@ -306,29 +262,20 @@ fun VaultScreen(
                 Spacer(modifier = Modifier.height(6.dp))
                 SettingRow("Symbols (!@#$)", includeSymbols) { includeSymbols = it }
             }
-
             Spacer(modifier = Modifier.height(16.dp))
 
             if (BuildConfig.DEBUG) {
                 Button(
                     onClick = {
-                        val generated = timeLockManager.generatePassword(
-                            length = length,
-                            includeUppercase = includeUppercase,
-                            includeLowercase = includeLowercase,
-                            includeNumbers = includeNumbers,
-                            includeSymbols = includeSymbols
+                        val gen = viewModel.generatePassword(
+                            GeneratePasswordConfig(length, includeUppercase, includeLowercase, includeNumbers, includeSymbols)
                         )
-                        password = generated
-                        manualPassword = generated
-                        timeLockManager.savePassword(generated)
-                        timeLockManager.debugLockForSeconds(30L)
-                        onLockApp(TimeUnit.SECONDS.toMillis(30L))
+                        password = gen
+                        viewModel.savePassword(gen)
+                        viewModel.lockVault(TimeUnit.SECONDS.toMillis(30))
+                        onLockApp(TimeUnit.SECONDS.toMillis(30))
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2A2D32),
-                        contentColor = Color.White
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2D32), contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -363,11 +310,7 @@ fun VaultScreen(
 }
 
 @Composable
-private fun SettingRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
+private fun SettingRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -376,11 +319,7 @@ private fun SettingRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            modifier = Modifier.size(width = 48.dp, height = 24.dp)
-        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange, modifier = Modifier.size(width = 48.dp, height = 24.dp))
     }
 }
 
@@ -401,7 +340,6 @@ private fun LockDurationContent(
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold
         )
-
         Spacer(modifier = Modifier.height(16.dp))
 
         val options = listOf(
@@ -419,9 +357,7 @@ private fun LockDurationContent(
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (isSelected) Color(0xFFB9A7FF) else Color(0xFF1E2733)
-                    )
+                    .background(if (isSelected) Color(0xFFB9A7FF) else Color(0xFF1E2733))
                     .clickable { onDurationChanged(value) }
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -433,19 +369,11 @@ private fun LockDurationContent(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp
                 )
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = Color(0xFF111111),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                if (isSelected) Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF111111), modifier = Modifier.size(20.dp))
             }
         }
 
         Spacer(modifier = Modifier.height(18.dp))
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -460,24 +388,18 @@ private fun LockDurationContent(
                 fontWeight = FontWeight.Medium
             )
         }
-
         Spacer(modifier = Modifier.height(18.dp))
-
         Button(
             onClick = onConfirm,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFB9A7FF),
-                contentColor = Color(0xFF111111)
-            ),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB9A7FF), contentColor = Color(0xFF111111)),
             shape = RoundedCornerShape(14.dp),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
         ) {
             Text("Confirm & Lock App", fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
-
         Spacer(modifier = Modifier.height(28.dp))
     }
 }

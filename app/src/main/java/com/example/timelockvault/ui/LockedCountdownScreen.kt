@@ -23,8 +23,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -41,24 +39,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.timelockvault.TimeLockManager
-import kotlinx.coroutines.delay
+import com.example.timelockvault.presentation.viewmodel.VaultUiState
 import java.util.concurrent.TimeUnit
 
 @Composable
 fun LockedCountdownScreen(
-    timeLockManager: TimeLockManager,
+    uiState: VaultUiState,
     onCloseApp: () -> Unit
 ) {
-    val uiState by timeLockManager.state.collectAsState()
     var arcProgress by remember { mutableFloatStateOf(360f) }
-
-    LaunchedEffect(uiState.isLocked, uiState.remainingMs) {
-        while (uiState.isLocked && uiState.remainingMs > 0L) {
-            delay(500L)
-            timeLockManager.refreshState()
-        }
-    }
 
     val animatedProgress by animateFloatAsState(
         targetValue = arcProgress,
@@ -66,9 +55,9 @@ fun LockedCountdownScreen(
         label = "arc_progress"
     )
 
-    LaunchedEffect(uiState.remainingMs) {
+    androidx.compose.runtime.LaunchedEffect(uiState.remainingMs) {
         val totalLockTime = 86400000L
-        arcProgress = 360f * (uiState.remainingMs.toFloat() / totalLockTime)
+        arcProgress = 360f * (uiState.remainingMs.toFloat() / totalLockTime).coerceIn(0f, 1f)
     }
 
     BackHandler { }
@@ -76,9 +65,7 @@ fun LockedCountdownScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Color(0xFF090C12)
-            ),
+            .background(Color(0xFF090C12)),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -114,7 +101,7 @@ fun LockedCountdownScreen(
                         topLeft = Offset(15f, 15f),
                         size = Size(size.width - 30f, size.height - 30f)
                     )
-                    
+
                     drawArc(
                         color = Color(0xFF1F2937),
                         startAngle = animatedProgress - 90f,
@@ -129,7 +116,7 @@ fun LockedCountdownScreen(
                 Box(
                     modifier = Modifier
                         .size(160.dp)
-                        .shadow(8.dp, CircleShape)
+                        .shadow(12.dp, CircleShape)
                         .clip(CircleShape)
                         .background(Color(0xFF0D1117)),
                     contentAlignment = Alignment.Center
@@ -195,14 +182,10 @@ private fun formatCountdown(remainingMs: Long): String {
     var remaining = remainingMs
     val days = TimeUnit.MILLISECONDS.toDays(remaining)
     remaining -= TimeUnit.DAYS.toMillis(days)
-
     val hours = TimeUnit.MILLISECONDS.toHours(remaining)
     remaining -= TimeUnit.HOURS.toMillis(hours)
-
     val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining)
     remaining -= TimeUnit.MINUTES.toMillis(minutes)
-
     val seconds = TimeUnit.MILLISECONDS.toSeconds(remaining)
-
     return String.format("%02dd : %02dh : %02dm : %02ds", days, hours, minutes, seconds)
 }
